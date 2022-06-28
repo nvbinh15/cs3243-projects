@@ -146,6 +146,9 @@ class State:
             for r, c in piece.get_reachable_position(board):
                 board.grid[r][c] = ATTACKED
     
+    def is_valid_state(self, r, c):
+        return (r >= 0) and (r < self.board.rows) and (c >= 0) and (c < self.board.cols) and (self.board.grid[r][c] >= 0)
+    
 
 #############################################################################
 ######## Helping Functions
@@ -176,12 +179,12 @@ def search(rows, cols, grid, enemy_pieces, own_pieces, goals):
         r, c = vertex
         neighbors = [
             (r-1, c-1), (r-1, c), (r-1, c+1),
-            (r, c-1), (r, c), (r, c+1),
+            (r, c-1), (r, c+1),
             (r+1, c-1), (r+1, c), (r+1, c+1)
         ]
         for pos in neighbors:
             pr, pc = pos
-            if (pr >= 0) and (pr < state.board.rows) and (pc >= 0) and (pc < state.board.cols) and (state.board.grid[pr][pc] >= 0):
+            if state.is_valid_state(pr, pc):
                 frontier.append((pos, path + [pos]))
                 state.board.grid[pr][pc] = VISITED
     
