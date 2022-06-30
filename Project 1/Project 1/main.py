@@ -4,3 +4,4 @@ from UCS import run_UCS
 from AStar import run_AStar
 
 print(run_UCS())
+print(run_AStar())

@@ -164,9 +164,17 @@ def to_chess_coord(position):
 ######## Implement Search Algorithm
 #############################################################################
 def search(rows, cols, grid, enemy_pieces, own_pieces, goals):
+
+    def is_goal(position, goals):
+        r, c = position
+        for goal in goals:
+            if r == goal[0] and c == goal[1]:
+                return True
+        return False
     
     board = Board(grid=grid, rows=rows, cols=cols)
     state = State(board=board, position=own_pieces[0][1], enemy=enemy_pieces)
+    is_found = False
 
     frontier = [[0, state.position]] # (cost, position)
     dist = [[[float('inf'), None] for _ in range(cols)] for _ in range(rows)] # (distance, parent)
@@ -174,11 +182,14 @@ def search(rows, cols, grid, enemy_pieces, own_pieces, goals):
 
     while frontier:
         cost, vertex = heapq.heappop(frontier)
+        if is_goal(vertex, goals):
+            is_found = True
+            break
         r, c = vertex
         state.board.grid[r][c] = VISITED
         neighbors = [
             (r-1, c-1), (r-1, c), (r-1, c+1),
-            (r, c-1), (r, c), (r, c+1),
+            (r, c-1), (r, c+1),
             (r+1, c-1), (r+1, c), (r+1, c+1)
         ]
         for pos in neighbors:
@@ -187,16 +198,11 @@ def search(rows, cols, grid, enemy_pieces, own_pieces, goals):
                 dist[pr][pc] = [cost + state.board.grid[pr][pc], vertex]
                 heapq.heappush(frontier, [dist[pr][pc][0], pos])
 
-    min_r, min_c = 0, 0
-    min_cost = float('inf')
-    for goal in goals:
-        r, c = goal 
-        if dist[r][c][0] < min_cost:
-            min_r, min_c = r, c 
-            min_cost = dist[r][c][0]
+    if not is_found:
+        return [], 0
     
     moves = list()
-    position = (min_r, min_c)
+    position = vertex
     while True:
         r, c = position
         parent = dist[r][c][1]
@@ -205,7 +211,7 @@ def search(rows, cols, grid, enemy_pieces, own_pieces, goals):
         moves.append([to_chess_coord(parent), to_chess_coord(position)])
         position = parent
 
-    return list(reversed(moves)), min_cost
+    return list(reversed(moves)), cost
 
 #############################################################################
 ######## Parser function and helper functions
@@ -270,4 +276,3 @@ def run_UCS():
     rows, cols, grid, enemy_pieces, own_pieces, goals = parse(testcase)
     moves, pathcost = search(rows, cols, grid, enemy_pieces, own_pieces, goals)
     return moves, pathcost
-    
