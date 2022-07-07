@@ -1,29 +1,212 @@
 import sys
 
+OBSTACLE = -1
+ATTACKED = -2
 # Helper functions to aid in your implementation. Can edit/remove
 #############################################################################
 ######## Piece
 #############################################################################
+
 class Piece:
-    pass
+
+    def __init__(self, position):
+        self.position = position
+
+    def get_chess_coord(self):
+        return to_chess_coord(self.position)
+
+    def get_type(self):
+        return ""
+
+    def get_reachable_position(self, board):
+        pass
+
+
+class King(Piece):
+    
+    def get_reachable_position(self, board):
+        r, c = self.position
+        reachable = [
+            (r-1, c-1), (r-1, c), (r-1, c+1),
+            (r, c-1), (r, c), (r, c+1),
+            (r+1, c-1), (r+1, c), (r+1, c+1)
+        ]
+        res = list()
+        for pos in reachable:
+            pr, pc = pos
+            if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
+                res.append(pos)
+        return res
+    
+    def get_type(self):
+        return "King"
+
+
+class Rook(Piece):
+
+    def get_reachable_position(self, board):
+        r, c = self.position
+        res = list()
+        pr, pc = r, c 
+        while (pr >= 0) and (board.grid[pr][pc] != OBSTACLE):
+            res.append((pr, pc))
+            pr -= 1
+        pr = r + 1
+        while (pr < board.rows) and (board.grid[pr][pc] != OBSTACLE):
+            res.append((pr, pc))
+            pr += 1
+        pr, pc = r, c-1
+        while (pc >= 0) and (board.grid[pr][pc] != OBSTACLE):
+            res.append((pr, pc))
+            pc -= 1 
+        pc = c + 1 
+        while (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
+            res.append((pr, pc))
+            pc += 1           
+        return res
+
+    def get_type(self):
+        return "Rook"
+
+
+class Bishop(Piece):
+
+    def get_reachable_position(self, board):
+        r, c = self.position
+        res = list()
+        pr, pc = r, c
+        while (pr >= 0) and (pc >= 0) and (board.grid[pr][pc] != OBSTACLE):
+            res.append((pr, pc))
+            pr -= 1
+            pc -= 1
+        pr, pc = r-1, c+1
+        while (pr >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
+            res.append((pr, pc))
+            pr -= 1
+            pc += 1
+        pr, pc = r+1, c-1
+        while (pr < board.rows) and (pc >= 0) and (board.grid[pr][pc] != OBSTACLE):
+            res.append((pr, pc))
+            pr += 1
+            pc -= 1
+        pr, pc = r+1, c+1
+        while (pr < board.rows) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
+            res.append((pr, pc))
+            pr += 1
+            pc += 1
+        return res
+
+    def get_type(self):
+        return "Bishop"
+
+
+class Knight(Piece):
+
+    def get_reachable_position(self, board):
+        r, c = self.position
+        res = list()
+        reachable = [
+            (r-2, c-1), (r-2, c+1), 
+            (r-1, c-2), (r-1, c+2),
+            (r, c),
+            (r+1, c-2), (r+1, c+2),           
+            (r+2, c-1), (r+2, c+1)
+        ]    
+        for pos in reachable:
+            pr, pc = pos
+            if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
+                res.append(pos)
+        return res
+
+    def get_type(self):
+        return "Knight"
+
+
+class Queen(Bishop, Rook):
+
+    def get_reachable_position(self, board):
+        return list(set(Rook.get_reachable_position(self, board) + Bishop.get_reachable_position(self, board)))
+
+    def get_type(self):
+        return "Queen"
+
 
 #############################################################################
 ######## Board
 #############################################################################
 class Board:
-    pass
+    
+    def __init__(self, grid, rows, cols):
+        self.grid = grid
+        self.rows = rows
+        self.cols = cols
+
 
 #############################################################################
 ######## State
 #############################################################################
 class State:
-    pass
+
+    def __init__(self, board, pieces):
+        self.board = board 
+        self.pieces = pieces
+
+    def value(self):
+        degree = dict()
+        for p in self.pieces:
+            degree[p] = 0
+
+        for p in self.pieces:
+            for p1 in self.pieces:
+                if p1 != p and p1.position in p.get_reachable_position(self.board):
+                    degree[p] += 1
+                    degree[p1] += 1
+        
+        return -sum(degree.values())
+    
+
+#############################################################################
+######## Helping Functions
+#############################################################################
+def to_chess_coord(position):
+    (r, c) = position
+    return (chr(c+97), r)
+
 
 #############################################################################
 ######## Implement Search Algorithm
 #############################################################################
 def search(rows, cols, grid, pieces, k):
-    pass
+
+    piece_objects = list()
+
+    for pos, piece in pieces.items():
+        if piece == 'King':
+            piece_objects.append(King(pos))
+        elif piece == 'Rook':
+            piece_objects.append(Rook(pos))
+        elif piece == 'Bishop':
+            piece_objects.append(Bishop(pos))
+        elif piece == 'Queen':
+            piece_objects.append(Queen(pos))
+        elif piece == 'Knight':
+            piece_objects.append(Knight(pos))
+
+    board = Board(grid=grid, rows=rows, cols=cols)
+
+
+    state = State(board=board, pieces=piece_objects)
+
+    while True:
+        if state.value() == 0:
+            return {p.get_chess_coord(): p.get_type() for p in state.pieces}
+        for i in range(len(state.pieces)):
+            neighbor = State(board=board, pieces=state.pieces[0:i] + state.pieces[i+1:])
+            if neighbor.value() > state.value():
+                state = neighbor
+                continue
+
+    return {}
 
 
 #############################################################################
