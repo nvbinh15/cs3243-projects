@@ -147,16 +147,16 @@ class Board:
 #############################################################################
 class State:
 
-    def __init__(self, board, domain, total_assignments):
+    def __init__(self, board, variables, total_assignments):
         self.board = board 
-        self.domain = domain
+        self.variables = variables
         self.total_assignments = total_assignments
 
     def is_valid(self, assignment):
         for piece in assignment:
             attacked_positions = piece.get_reachable_position(self.board)
             for p1 in assignment:
-                if p1 != piece and p1 in attacked_positions:
+                if p1 != piece and p1.position in attacked_positions:
                     return False
         return True
 
@@ -180,7 +180,7 @@ def search(rows, cols, grid, num_pieces):
     board = Board(grid, rows, cols)
     total_assignments = sum(num_pieces)
 
-    domain = {
+    variables = {
         "King": num_pieces[0],
         "Queen": num_pieces[1],
         "Bishop": num_pieces[2],
@@ -188,12 +188,15 @@ def search(rows, cols, grid, num_pieces):
         "Knight": num_pieces[4]
     }
 
-    state = State(board=board, domain=domain, total_assignments=total_assignments)
+    state = State(board=board, variables=variables, total_assignments=total_assignments)
 
     return backtrack(state, list())
 
-def backtrack(state, assignment):
 
+invalid_records = dict()
+
+def backtrack(state, assignment):
+    global invalid_records
 
     if state.is_complete(assignment):
         return {p.get_chess_coord(): p.get_type() for p in assignment}
@@ -211,16 +214,41 @@ def backtrack(state, assignment):
         elif var == 'Knight':
             piece = Knight(value)
         assignment.append(piece)
-        if state.is_valid(assignment):
+        if state.is_valid(assignment) and assignment_to_record(assignment) not in invalid_records:
             result = backtrack(state, assignment)
             if result:
                 return result
+        invalid_records[assignment_to_record(assignment)] = True
         assignment.pop()
     return None
 
 
+def assignment_to_record(assignment):
+    record = {
+        "King": list(),
+        "Queen": list(),
+        "Bishop": list(),
+        "Rook": list(),
+        "Knight": list()
+    }
+    for piece in assignment:
+        if isinstance(piece, King):
+            record['King'].append(piece.position)
+        elif isinstance(piece, Queen):
+            record['Queen'].append(piece.position)
+        elif isinstance(piece, Rook):
+            record['Rook'].append(piece.position)
+        elif isinstance(piece, Bishop):
+            record['Bishop'].append(piece.position)
+        elif isinstance(piece, Knight):
+            record['Knight'].append(piece.position)
+    for key in record:
+        record[key] = sorted(record[key])
+    return str(record)
+
+
 def select_unassigned_variable(state, assignment):
-    remainder = {type: state.domain[type] for type in state.domain}
+    remainder = {type: state.variables[type] for type in state.variables}
     for piece in assignment:
         if isinstance(piece, King):
             remainder['King'] -= 1

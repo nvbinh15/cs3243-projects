@@ -1,4 +1,4 @@
 from Local import run_local
-from CSP import run_CSP
+import CSP
 
-print(run_CSP())
+print(CSP.run_CSP())
