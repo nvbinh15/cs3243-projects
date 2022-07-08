@@ -1,7 +1,7 @@
 import sys
+import random
 
 OBSTACLE = -1
-ATTACKED = -2
 # Helper functions to aid in your implementation. Can edit/remove
 #############################################################################
 ######## Piece
@@ -11,6 +11,12 @@ class Piece:
 
     def __init__(self, position):
         self.position = position
+
+    def get_chess_coord(self):
+        return to_chess_coord(self.position)
+
+    def get_type(self):
+        return ""
 
     def get_reachable_position(self, board):
         pass
@@ -31,6 +37,9 @@ class King(Piece):
             if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
                 res.append(pos)
         return res
+    
+    def get_type(self):
+        return "King"
 
 
 class Rook(Piece):
@@ -55,6 +64,9 @@ class Rook(Piece):
             res.append((pr, pc))
             pc += 1           
         return res
+
+    def get_type(self):
+        return "Rook"
 
 
 class Bishop(Piece):
@@ -84,6 +96,9 @@ class Bishop(Piece):
             pc += 1
         return res
 
+    def get_type(self):
+        return "Bishop"
+
 
 class Knight(Piece):
 
@@ -103,11 +118,17 @@ class Knight(Piece):
                 res.append(pos)
         return res
 
+    def get_type(self):
+        return "Knight"
+
 
 class Queen(Bishop, Rook):
 
     def get_reachable_position(self, board):
         return list(set(Rook.get_reachable_position(self, board) + Bishop.get_reachable_position(self, board)))
+
+    def get_type(self):
+        return "Queen"
 
 
 #############################################################################
@@ -126,27 +147,21 @@ class Board:
 #############################################################################
 class State:
 
-    def __init__(self, board, position, enemy):
+    def __init__(self, board, domain, total_assignments):
         self.board = board 
-        self.position = position
+        self.domain = domain
+        self.total_assignments = total_assignments
 
-        for p, pos in enemy:
-            if p == 'King':
-                piece = King(pos)
-            elif p == 'Rook':
-                piece = Rook(pos)
-            elif p == 'Bishop':
-                piece = Bishop(pos)
-            elif p == 'Knight':
-                piece = Knight(pos)
-            elif p == 'Queen':
-                piece = Queen(pos)
+    def is_valid(self, assignment):
+        for piece in assignment:
+            attacked_positions = piece.get_reachable_position(self.board)
+            for p1 in assignment:
+                if p1 != piece and p1 in attacked_positions:
+                    return False
+        return True
 
-            for r, c in piece.get_reachable_position(board):
-                board.grid[r][c] = ATTACKED
-
-    def is_valid_state(self, r, c):
-        return (r >= 0) and (r < self.board.rows) and (c >= 0) and (c < self.board.cols) and (self.board.grid[r][c] >= 0)
+    def is_complete(self, assignment):
+        return self.total_assignments == len(assignment) and self.is_valid(assignment)
     
 
 #############################################################################
@@ -155,11 +170,89 @@ class State:
 def to_chess_coord(position):
     (r, c) = position
     return (chr(c+97), r)
+
+
 #############################################################################
 ######## Implement Search Algorithm
 #############################################################################
 def search(rows, cols, grid, num_pieces):
-    pass
+    
+    board = Board(grid, rows, cols)
+    total_assignments = sum(num_pieces)
+
+    domain = {
+        "King": num_pieces[0],
+        "Queen": num_pieces[1],
+        "Bishop": num_pieces[2],
+        "Rook": num_pieces[3],
+        "Knight": num_pieces[4]
+    }
+
+    state = State(board=board, domain=domain, total_assignments=total_assignments)
+
+    return backtrack(state, list())
+
+def backtrack(state, assignment):
+
+
+    if state.is_complete(assignment):
+        return {p.get_chess_coord(): p.get_type() for p in assignment}
+    
+    var = select_unassigned_variable(state, assignment)
+    for value in order_domain_values(state, assignment):
+        if var == 'King':
+            piece = King(value)
+        elif var == 'Rook':
+            piece = Rook(value)
+        elif var == 'Bishop':
+            piece = Bishop(value)
+        elif var == 'Queen':
+            piece = Queen(value)
+        elif var == 'Knight':
+            piece = Knight(value)
+        assignment.append(piece)
+        if state.is_valid(assignment):
+            result = backtrack(state, assignment)
+            if result:
+                return result
+        assignment.pop()
+    return None
+
+
+def select_unassigned_variable(state, assignment):
+    remainder = {type: state.domain[type] for type in state.domain}
+    for piece in assignment:
+        if isinstance(piece, King):
+            remainder['King'] -= 1
+        elif isinstance(piece, Queen):
+            remainder['Queen'] -= 1
+        elif isinstance(piece, Rook):
+            remainder['Rook'] -= 1
+        elif isinstance(piece, Bishop):
+            remainder['Bishop'] -= 1
+        elif isinstance(piece, Knight):
+            remainder['Knight'] -= 1
+    if "Queen" in remainder and remainder["Queen"] > 0:
+        return "Queen"
+    elif "Rook" in remainder and remainder["Rook"] > 0:
+        return "Rook"
+    elif "Bishop" in remainder and remainder['Bishop'] > 0:
+        return "Bishop"
+    elif "Knight" in remainder and remainder['Knight'] > 0:
+        return "Knight"
+    return "King"
+        
+
+def order_domain_values(state, assignment):
+    invalid_positions = list()
+    domain_values = list()
+    for piece in assignment:
+        invalid_positions += piece.get_reachable_position(state.board)
+    for i in range(state.board.rows):
+        for j in range(state.board.cols):
+            if state.board.grid[i][j] != OBSTACLE and (i, j) not in invalid_positions:
+                domain_values.append((i, j))
+    return domain_values
 
 
 #############################################################################
