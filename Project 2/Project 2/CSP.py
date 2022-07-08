@@ -1,5 +1,5 @@
 import sys
-import random
+import copy
 
 OBSTACLE = -1
 # Helper functions to aid in your implementation. Can edit/remove
@@ -187,7 +187,6 @@ def search(rows, cols, grid, num_pieces):
         "Rook": num_pieces[3],
         "Knight": num_pieces[4]
     }
-
     state = State(board=board, variables=variables, total_assignments=total_assignments)
 
     return backtrack(state, list())
@@ -200,6 +199,7 @@ def backtrack(state, assignment):
 
     if state.is_complete(assignment):
         return {p.get_chess_coord(): p.get_type() for p in assignment}
+
     
     var = select_unassigned_variable(state, assignment)
     for value in order_domain_values(state, assignment):
@@ -214,14 +214,46 @@ def backtrack(state, assignment):
         elif var == 'Knight':
             piece = Knight(value)
         assignment.append(piece)
-        if state.is_valid(assignment) and assignment_to_record(assignment) not in invalid_records:
-            result = backtrack(state, assignment)
-            if result:
-                return result
+        if forward_check(state, assignment):
+            if assignment_to_record(assignment) not in invalid_records and state.is_valid(assignment):
+                result = backtrack(state, assignment)
+                if result:
+                    return result
+            invalid_records[assignment_to_record(assignment)] = True
         invalid_records[assignment_to_record(assignment)] = True
         assignment.pop()
     return None
 
+
+def forward_check(state, assignment):
+    remainder = {type: state.variables[type] for type in state.variables}
+    for piece in assignment:
+        remainder[piece.get_type()] -= 1
+
+    for type in remainder:
+        is_valid = False
+
+        if remainder[type] > 0:
+            domain = order_domain_values(state, assignment)
+            for pos in domain:
+                if type == 'King':
+                    piece = King(pos)
+                elif type == 'Rook':
+                    piece = Rook(pos)
+                elif type == 'Bishop':
+                    piece = Bishop(pos)
+                elif type == 'Queen':
+                    piece = Queen(pos)
+                elif type == 'Knight':
+                    piece = Knight(pos)
+                attacked = piece.get_reachable_position(state.board)
+                for p in assignment:
+                    if p.position not in attacked:
+                        is_valid = True
+                        break
+            if not is_valid:
+                return False
+    return True
 
 def assignment_to_record(assignment):
     record = {
@@ -232,16 +264,7 @@ def assignment_to_record(assignment):
         "Knight": list()
     }
     for piece in assignment:
-        if isinstance(piece, King):
-            record['King'].append(piece.position)
-        elif isinstance(piece, Queen):
-            record['Queen'].append(piece.position)
-        elif isinstance(piece, Rook):
-            record['Rook'].append(piece.position)
-        elif isinstance(piece, Bishop):
-            record['Bishop'].append(piece.position)
-        elif isinstance(piece, Knight):
-            record['Knight'].append(piece.position)
+        record[piece.get_type()].append(piece.position)
     for key in record:
         record[key] = sorted(record[key])
     return str(record)
@@ -250,16 +273,7 @@ def assignment_to_record(assignment):
 def select_unassigned_variable(state, assignment):
     remainder = {type: state.variables[type] for type in state.variables}
     for piece in assignment:
-        if isinstance(piece, King):
-            remainder['King'] -= 1
-        elif isinstance(piece, Queen):
-            remainder['Queen'] -= 1
-        elif isinstance(piece, Rook):
-            remainder['Rook'] -= 1
-        elif isinstance(piece, Bishop):
-            remainder['Bishop'] -= 1
-        elif isinstance(piece, Knight):
-            remainder['Knight'] -= 1
+        remainder[piece.get_type()] -= 1
     if "Queen" in remainder and remainder["Queen"] > 0:
         return "Queen"
     elif "Rook" in remainder and remainder["Rook"] > 0:
@@ -272,14 +286,27 @@ def select_unassigned_variable(state, assignment):
         
 
 def order_domain_values(state, assignment):
-    invalid_positions = list()
+    # invalid_positions = list()
+    # domain_values = list()
+    # for piece in assignment:
+    #     invalid_positions += piece.get_reachable_position(state.board)
+    # for i in range(state.board.rows):
+    #     for j in range(state.board.cols):
+    #         if state.board.grid[i][j] != OBSTACLE and (i, j) not in invalid_positions:
+    #             domain_values.append((i, j))
+    # return domain_values
+
+    grid = copy.deepcopy(state.board.grid)
     domain_values = list()
     for piece in assignment:
-        invalid_positions += piece.get_reachable_position(state.board)
+        attacked = piece.get_reachable_position(state.board)
+        for (i,j) in attacked:
+            grid[i][j] = OBSTACLE
     for i in range(state.board.rows):
         for j in range(state.board.cols):
-            if state.board.grid[i][j] != OBSTACLE and (i, j) not in invalid_positions:
+            if grid[i][j] != OBSTACLE:
                 domain_values.append((i, j))
+
     return domain_values
 
 
