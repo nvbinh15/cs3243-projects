@@ -200,6 +200,9 @@ def backtrack(state, assignment):
     if state.is_complete(assignment):
         return {p.get_chess_coord(): p.get_type() for p in assignment}
 
+    # for p in assignment:
+    #     print(p.position, p.get_type(), end=" - ")
+    # print()
     
     var = select_unassigned_variable(state, assignment)
     for value in order_domain_values(state, assignment):
@@ -214,7 +217,7 @@ def backtrack(state, assignment):
         elif var == 'Knight':
             piece = Knight(value)
         assignment.append(piece)
-        if forward_check(state, assignment):
+        if forward_check_1(state, assignment):
             if assignment_to_record(assignment) not in invalid_records and state.is_valid(assignment):
                 result = backtrack(state, assignment)
                 if result:
@@ -253,6 +256,15 @@ def forward_check(state, assignment):
                         break
             if not is_valid:
                 return False
+    return True
+
+def forward_check_1(state, assignment):
+    remainder = {type: state.variables[type] for type in state.variables}
+    for piece in assignment:
+        remainder[piece.get_type()] -= 1
+    domain = order_domain_values(state, assignment)
+    if sum(remainder.values()) > len(domain):
+        return False
     return True
 
 def assignment_to_record(assignment):
