@@ -1,7 +1,9 @@
 import sys
+import random
 
 OBSTACLE = -1
 ATTACKED = -2
+random_seed = 0
 # Helper functions to aid in your implementation. Can edit/remove
 #############################################################################
 ######## Piece
@@ -150,19 +152,31 @@ class State:
     def __init__(self, board, pieces):
         self.board = board 
         self.pieces = pieces
+        self.degree = dict()
 
     def value(self):
-        degree = dict()
-        for p in self.pieces:
-            degree[p] = 0
+        self.degree = dict()
 
         for p in self.pieces:
+            attacked_positions = p.get_reachable_position(self.board)
             for p1 in self.pieces:
-                if p1 != p and p1.position in p.get_reachable_position(self.board):
-                    degree[p] += 1
-                    degree[p1] += 1
+                if p1 != p and p1.position in attacked_positions:
+                    if p in self.degree:
+                        self.degree[p] += 1
+                    else:
+                        self.degree[p] = 1
+                    if p1 in self.degree:
+                        self.degree[p1] += 1
+                    else:
+                        self.degree[p1] = 1
         
-        return -sum(degree.values())
+        return -sum(self.degree.values())
+
+    def assign_best_successor(self):
+        if random.random() > random_seed:
+            self.pieces.remove(max(self.degree, key=self.degree.get))
+        else:
+            self.pieces.remove(random.choice(list(self.degree.keys())))
     
 
 #############################################################################
@@ -178,7 +192,9 @@ def to_chess_coord(position):
 #############################################################################
 def search(rows, cols, grid, pieces, k):
 
+    global random_seed
     piece_objects = list()
+    k = int(k)
 
     for pos, piece in pieces.items():
         if piece == 'King':
@@ -194,19 +210,18 @@ def search(rows, cols, grid, pieces, k):
 
     board = Board(grid=grid, rows=rows, cols=cols)
 
-
-    state = State(board=board, pieces=piece_objects)
-
     while True:
-        if state.value() == 0:
-            return {p.get_chess_coord(): p.get_type() for p in state.pieces}
-        for i in range(len(state.pieces)):
-            neighbor = State(board=board, pieces=state.pieces[0:i] + state.pieces[i+1:])
-            if neighbor.value() > state.value():
-                state = neighbor
-                continue
+        state = State(board=board, pieces=piece_objects.copy())
+        is_local_maxima = False
 
-    return {}
+        while (len(state.pieces) >= k) and (not is_local_maxima):
+            value = state.value()
+            state.assign_best_successor()
+            if state.value() == 0:
+                return {p.get_chess_coord(): p.get_type() for p in state.pieces}
+            if state.value() < value or len(state.pieces) <= k:
+                is_local_maxima = True
+                random_seed = 0.1
 
 
 #############################################################################
