@@ -1,1 +1,1 @@
-{('a', 0): 'Knight', ('c', 0): 'King', ('e', 0): 'King', ('g', 0): 'King', ('a', 2): 'King', ('c', 2): 'King'}
+{('a', 0): 'Queen', ('c', 1): 'Queen', ('e', 2): 'Queen', ('b', 3): 'Queen', ('d', 4): 'Queen', ('i', 5): 'Queen', ('k', 6): 'Queen', ('m', 7): 'Queen', ('o', 8): 'Queen', ('q', 9): 'Queen', ('s', 10): 'Queen', ('h', 11): 'Queen', ('f', 12): 'Queen', ('g', 15): 'Queen', ('l', 16): 'Queen', ('j', 17): 'Queen', ('p', 18): 'Queen', ('n', 19): 'Queen'}

@@ -182,15 +182,21 @@ def search(rows, cols, grid, num_pieces):
 
 
 invalid_records = dict()
+var_domain_record = dict()
 
 def backtrack(state, assignment):
     global invalid_records
+    global var_domain_record
 
     if state.is_complete(assignment):
         return {p.get_chess_coord(): p.get_type() for p in assignment}
     
-    var = select_unassigned_variable(state, assignment)
-    domain = order_domain_values(state, assignment)
+    
+    assignment_record = assignment_to_record(assignment)
+    if assignment_record not in var_domain_record:
+        var_domain_record[assignment_record] = select_unassigned_variable(state, assignment), order_domain_values(state, assignment)
+    var, domain = var_domain_record[assignment_record]
+
     for value in domain:
         piece = Queen(value) if var == 'Queen' else Rook(value) if var == 'Rook' else \
             Bishop(value) if var == 'Bishop' else Knight(value) if var == 'Knight' else King(value)
@@ -225,11 +231,16 @@ def select_unassigned_variable(state, assignment):
     return "Queen" if remainder["Queen"] > 0 else "Rook" if remainder["Rook"] > 0 else \
         "Bishop" if remainder['Bishop'] > 0 else "Knight" if remainder['Knight'] > 0 else "King"
         
+attacked_record = dict()
 
 def order_domain_values(state, assignment):
+    global attacked_record
+
     grid = [row[:] for row in state.board.grid]
     for piece in assignment:
-        attacked = piece.get_reachable_position(state.board).keys()
+        if (piece.get_type(), piece.position) not in attacked_record:
+            attacked_record[(piece.get_type(), piece.position)] = piece.get_reachable_position(state.board)
+        attacked = attacked_record[(piece.get_type(), piece.position)]
         for (i,j) in attacked:
             grid[i][j] = OBSTACLE
     return [(i, j) for i in range(state.board.rows) for j in range(state.board.cols) if grid[i][j] != OBSTACLE]
