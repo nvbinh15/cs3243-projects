@@ -1,6 +1,5 @@
 import sys
 
-
 OBSTACLE = -1
 # Helper functions to aid in your implementation. Can edit/remove
 #############################################################################
@@ -16,7 +15,7 @@ class Piece:
         return to_chess_coord(self.position)
 
     def get_type(self):
-        pass
+        return ""
 
     def get_reachable_position(self, board):
         pass
@@ -31,7 +30,12 @@ class King(Piece):
             (r, c-1), (r, c), (r, c+1),
             (r+1, c-1), (r+1, c), (r+1, c+1)
         ]
-        return {(pr, pc):True for (pr, pc) in reachable if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE)}
+        res = list()
+        for pos in reachable:
+            pr, pc = pos
+            if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
+                res.append(pos)
+        return res
     
     def get_type(self):
         return "King"
@@ -41,22 +45,22 @@ class Rook(Piece):
 
     def get_reachable_position(self, board):
         r, c = self.position
-        res = dict()
+        res = list()
         pr, pc = r, c 
         while (pr >= 0) and (board.grid[pr][pc] != OBSTACLE):
-            res[(pr, pc)] = True
+            res.append((pr, pc))
             pr -= 1
         pr = r + 1
         while (pr < board.rows) and (board.grid[pr][pc] != OBSTACLE):
-            res[(pr, pc)] = True
+            res.append((pr, pc))
             pr += 1
         pr, pc = r, c-1
         while (pc >= 0) and (board.grid[pr][pc] != OBSTACLE):
-            res[(pr, pc)] = True
+            res.append((pr, pc))
             pc -= 1 
         pc = c + 1 
         while (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
-            res[(pr, pc)] = True
+            res.append((pr, pc))
             pc += 1           
         return res
 
@@ -68,25 +72,25 @@ class Bishop(Piece):
 
     def get_reachable_position(self, board):
         r, c = self.position
-        res = dict()
+        res = list()
         pr, pc = r, c
         while (pr >= 0) and (pc >= 0) and (board.grid[pr][pc] != OBSTACLE):
-            res[(pr, pc)] = True
+            res.append((pr, pc))
             pr -= 1
             pc -= 1
         pr, pc = r-1, c+1
         while (pr >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
-            res[(pr, pc)] = True
+            res.append((pr, pc))
             pr -= 1
             pc += 1
         pr, pc = r+1, c-1
         while (pr < board.rows) and (pc >= 0) and (board.grid[pr][pc] != OBSTACLE):
-            res[(pr, pc)] = True
+            res.append((pr, pc))
             pr += 1
             pc -= 1
         pr, pc = r+1, c+1
         while (pr < board.rows) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
-            res[(pr, pc)] = True
+            res.append((pr, pc))
             pr += 1
             pc += 1
         return res
@@ -99,6 +103,7 @@ class Knight(Piece):
 
     def get_reachable_position(self, board):
         r, c = self.position
+        res = list()
         reachable = [
             (r-2, c-1), (r-2, c+1), 
             (r-1, c-2), (r-1, c+2),
@@ -106,7 +111,11 @@ class Knight(Piece):
             (r+1, c-2), (r+1, c+2),           
             (r+2, c-1), (r+2, c+1)
         ]    
-        return {(pr, pc):True for (pr, pc) in reachable if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE)}
+        for pos in reachable:
+            pr, pc = pos
+            if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board.grid[pr][pc] != OBSTACLE):
+                res.append(pos)
+        return res
 
     def get_type(self):
         return "Knight"
@@ -115,7 +124,7 @@ class Knight(Piece):
 class Queen(Bishop, Rook):
 
     def get_reachable_position(self, board):
-        return {**Rook.get_reachable_position(self, board), **Bishop.get_reachable_position(self, board)}
+        return list(set(Rook.get_reachable_position(self, board) + Bishop.get_reachable_position(self, board)))
 
     def get_type(self):
         return "Queen"
@@ -151,7 +160,7 @@ class State:
         return True
 
     def is_complete(self, assignment):
-        return self.total_assignments == len(assignment)
+        return self.total_assignments == len(assignment) and self.is_valid(assignment)
     
 
 #############################################################################
@@ -178,6 +187,7 @@ def search(rows, cols, grid, num_pieces):
         "Knight": num_pieces[4]
     }
     state = State(board=board, variables=variables, total_assignments=total_assignments)
+
     return backtrack(state, list())
 
 
@@ -190,7 +200,6 @@ def backtrack(state, assignment):
 
     if state.is_complete(assignment):
         return {p.get_chess_coord(): p.get_type() for p in assignment}
-    
     
     assignment_record = assignment_to_record(assignment)
     if assignment_record not in var_domain_record:
@@ -237,15 +246,16 @@ def order_domain_values(state, assignment):
     global attacked_record
 
     grid = [row[:] for row in state.board.grid]
+
     for piece in assignment:
         if (piece.get_type(), piece.position) not in attacked_record:
             attacked_record[(piece.get_type(), piece.position)] = piece.get_reachable_position(state.board)
         attacked = attacked_record[(piece.get_type(), piece.position)]
         for (i,j) in attacked:
             grid[i][j] = OBSTACLE
+
     return [(i, j) for i in range(state.board.rows) for j in range(state.board.cols) if grid[i][j] != OBSTACLE]
     
-
 
 #############################################################################
 ######## Parser function and helper functions
