@@ -169,7 +169,7 @@ def search(rows, cols, grid, enemy_pieces, own_pieces, goals):
         for goal in goals:
             if abs(goal[0]-r) + abs(goal[1]-c) < min_manhattan_distance:
                 min_manhattan_distance = abs(goal[0]-r) + abs(goal[1]-c)
-        return min_manhattan_distance
+        return int(min_manhattan_distance / 2)
         
     def is_goal(position, goals):
         r, c = position
