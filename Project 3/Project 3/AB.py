@@ -1,7 +1,8 @@
+from copy import copy
 import sys
 
 WHITE = 1
-BLACK = 0
+BLACK = -1
 ROWS = 5
 COLS = 5
 ### IMPORTANT: Remove any print() functions or rename any print functions/variables/string when submitting on CodePost
@@ -145,7 +146,7 @@ class Knight(Piece):
         ]    
         for pos in reachable:
             pr, pc = pos
-            if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board[pr][pc] != self.color):
+            if (pr >= 0) and (pr < ROWS) and (pc >= 0) and (pc < COLS) and ((board[pr][pc] is None) or board[pr][pc].color != self.color):
                 res.append(pos)
         return res
 
@@ -184,18 +185,53 @@ class Pawn(Piece):
     def get_type(self):
         return "Pawn"
 
-class Game:
-    pass
-
 
 class State:
     
-    def __init__(self, pieces):
-        board = [[None for _ in range(5)] for _ in range(5)]
-        for piece in pieces:
-            r, c = piece.position
-            board[r][c] = piece
+    def __init__(self, board, turn=WHITE):
         self.board = board
+        self.turn = turn
+    
+    def actions(self):
+        res = list()
+        for r in range(ROWS):
+            for c in range(COLS):
+                if self.board[r][c] is not None and self.board[r][c].color == self.turn:
+                    for x in self.board[r][c].get_reachable_position(self.board):
+                        res.append(((r, c), x))
+        return res
+
+    def result(self, action): # action is a tuple (old_position, new_position)
+        board = [row[:] for row in self.board]
+        res = State(board, self.turn)
+        res.board[action[0][0]][action[0][1]] = None
+        piece = self.board[action[0][0]][action[0][1]]
+        piece.position = action[1]
+        res.board[action[1][0]][action[1][1]] = piece
+        self.turn = -self.turn
+        return res
+    
+    def utility(self):
+        max_util = 0
+        for r in range(ROWS):
+            for c in range(COLS):
+                if self.board[r][c] is not None:
+                    if self.board[r][c].get_type() == "King":
+                        max_util += 1000 * self.board[r][c].color
+                    elif self.board[r][c].get_type() == "Queen":
+                        max_util += 90 * self.board[r][c].color
+                    elif self.board[r][c].get_type() == "Rook":
+                        max_util += 50 * self.board[r][c].color
+                    elif self.board[r][c].get_type() == "Bishop":
+                        max_util += 30 * self.board[r][c].color
+                    elif self.board[r][c].get_type() == "Knight":
+                        max_util += 30 * self.board[r][c].color
+                    else:
+                        max_util += 10 * self.board[r][c].color
+        return max_util
+
+    def is_terminal(self):
+        return False
     
     def __str__(self):
         res = ""
@@ -210,8 +246,35 @@ class State:
 
 
 #Implement your minimax with alpha-beta pruning algorithm here.
-def ab():
-    pass
+def ab(state, depth, alpha, beta, is_max_player):
+    print(state)
+    if depth == 0 or state.is_terminal():
+        return state.utility(), None
+    move = None
+    if is_max_player:
+        print("WHITE'S TURN")
+        value = -float('inf')
+        actions = state.actions()
+        for action in actions:
+            v, a = ab(state.result(action), depth-1, alpha, beta, False)
+            if v > value:
+                value, move = v, a
+                alpha = max(alpha, value)
+            if value >= beta:
+                return value, move
+        return value, move
+    else:
+        print("BLACK'S TURN")
+        value = float('inf')
+        actions = state.actions()
+        for action in actions:
+            v, a = ab(state.result(action), depth-1, alpha, beta, True)
+            if v < value:
+                value, move = v, a
+                beta = min(beta, value)
+            if value <= alpha:
+                return value, move
+        return value, move
 
 
 def from_chess_coord( ch_coord):
@@ -255,9 +318,17 @@ def studentAgent(gameboard):
         else:
             pieces.append(Pawn(from_chess_coord(piece), gameboard[piece][1]))
 
-    state = State(pieces)
+    board = [[None for _ in range(5)] for _ in range(5)]
+    for piece in pieces:
+        r, c = piece.position
+        board[r][c] = piece
+
+    state = State(board)
+
     print(state)
+    print(state.actions())
 
-
-    move = (None, None)
+    # move = (None, None)
+    u, move = ab(state, 5, -float('inf'), float('inf'), True)
+    print(u)
     return move #Format to be returned (('a', 0), ('b', 3))
