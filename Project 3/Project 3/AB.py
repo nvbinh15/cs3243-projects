@@ -1,42 +1,225 @@
 import sys
 
+WHITE = 1
+BLACK = 0
+ROWS = 5
+COLS = 5
 ### IMPORTANT: Remove any print() functions or rename any print functions/variables/string when submitting on CodePost
 ### The autograder will not run if it detects any print function.
 
 # Helper functions to aid in your implementation. Can edit/remove
 class Piece:
-    pass
 
-class Knight(Piece):
-    pass
-        
+    def __init__(self, position, color):
+        self.position = position
+        if color == 'White':
+            self.color = WHITE
+        else:
+            self.color = BLACK
+
+    def get_chess_coord(self):
+        return to_chess_coord(self.position)
+
+    def get_type(self):
+        return ""
+
+    def get_reachable_position(self, board):
+        pass
+
+    def __str__(self):
+        return self.get_type()[:2] + "-" + str(self.color)
+
+
+class King(Piece):
+    
+    def get_reachable_position(self, board):
+        r, c = self.position
+        reachable = [
+            (r-1, c-1), (r-1, c), (r-1, c+1),
+            (r, c-1), (r, c+1),
+            (r+1, c-1), (r+1, c), (r+1, c+1)
+        ]
+        res = list()
+        for pos in reachable:
+            pr, pc = pos
+            if (pr >= 0) and (pr < ROWS) and (pc >= 0) and (pc < COLS) and ((board[pr][pc] is None) or board[pr][pc].color != self.color):
+                res.append(pos)
+        return res
+    
+    def get_type(self):
+        return "King"
+
+
 class Rook(Piece):
-    pass
+
+    def get_reachable_position(self, board):
+        r, c = self.position
+        res = list()
+        pr, pc = r-1, c 
+        while (pr >= 0) and (board[pr][pc] is None):
+            res.append((pr, pc))
+            pr -= 1
+        if pr >= 0 and board[pr][pc].color != self.color:
+            res.append((pr, pc))
+
+        pr = r + 1
+        while (pr < ROWS) and (board[pr][pc] is None):
+            res.append((pr, pc))
+            pr += 1
+        if pr < ROWS and board[pr][pc].color != self.color:
+            res.append((pr, pc))
+
+        pr, pc = r, c-1
+        while (pc >= 0) and (board[pr][pc] is None):
+            res.append((pr, pc))
+            pc -= 1 
+        if pc >= 0 and board[pr][pc].color != self.color:
+            res.append((pr, pc))
+
+        pc = c + 1 
+        while (pc < COLS) and (board[pr][pc] is None):
+            res.append((pr, pc))
+            pc += 1        
+        if pc < COLS and board[pr][pc].color != self.color:
+            res.append((pr, pc))
+           
+        return res
+
+    def get_type(self):
+        return "Rook"
+
 
 class Bishop(Piece):
-    pass
-        
-class Queen(Piece):
-    pass
-        
-class King(Piece):
-    pass
+
+    def get_reachable_position(self, board):
+        r, c = self.position
+        res = list()
+        pr, pc = r-1, c-1
+        while (pr >= 0) and (pc >= 0) and (board[pr][pc] is None):
+            res.append((pr, pc))
+            pr -= 1
+            pc -= 1
+        if (pr >= 0) and (pc >= 0) and board[pr][pc].color != self.color:
+            res.append((pr, pc))
+
+        pr, pc = r-1, c+1
+        while (pr >= 0) and (pc < COLS) and (board[pr][pc] is None):
+            res.append((pr, pc))
+            pr -= 1
+            pc += 1
+        if (pr >= 0) and (pc < COLS) and board[pr][pc].color != self.color:
+            res.append((pr, pc))
+
+        pr, pc = r+1, c-1
+        while (pr < ROWS) and (pc >= 0) and (board[pr][pc] is None):
+            res.append((pr, pc))
+            pr += 1
+            pc -= 1
+        if (pr < ROWS) and (pc >= 0) and board[pr][pc].color != self.color:
+            res.append((pr, pc))
+
+        pr, pc = r+1, c+1
+        while (pr < ROWS) and (pc < COLS) and (board[pr][pc] is None):
+            res.append((pr, pc))
+            pr += 1
+            pc += 1
+        if (pr < ROWS) and (pc < COLS) and board[pr][pc].color != self.color:
+            res.append((pr, pc))
+
+        return res
+
+    def get_type(self):
+        return "Bishop"
+
+
+class Knight(Piece):
+
+    def get_reachable_position(self, board):
+        r, c = self.position
+        res = list()
+        reachable = [
+            (r-2, c-1), (r-2, c+1), 
+            (r-1, c-2), (r-1, c+2),
+            (r+1, c-2), (r+1, c+2),           
+            (r+2, c-1), (r+2, c+1)
+        ]    
+        for pos in reachable:
+            pr, pc = pos
+            if (pr >= 0) and (pr < board.rows) and (pc >= 0) and (pc < board.cols) and (board[pr][pc] != self.color):
+                res.append(pos)
+        return res
+
+    def get_type(self):
+        return "Knight"
+
+
+class Queen(Bishop, Rook):
+
+    def get_reachable_position(self, board):
+        return list(set(Rook.get_reachable_position(self, board) + Bishop.get_reachable_position(self, board)))
+
+    def get_type(self):
+        return "Queen"
         
 class Pawn(Piece):
-    #New Piece to be implemented
-    pass
+    def get_reachable_position(self, board):
+        res = list()
+        r, c = self.position
+        if self.color == WHITE: # go downwards (r increases)
+            if (r+1 < ROWS) and (board[r+1][c] is None):
+                res.append((r+1, c))
+            if (r+1 < ROWS) and (c-1 >= 0) and (board[r+1][c-1] is not None) and (board[r+1][c-1].color != self.color):
+                res.append((r+1, c-1))
+            if (r+1 < ROWS) and (c+1 < COLS) and (board[r+1][c+1] is not None) and (board[r+1][c+1].color != self.color):
+                res.append((r+1, c+1))
+        else: # go upwards (r decreases)
+            if (r-1 >= 0) and (board[r-1][c] is None):
+                res.append((r-1, c))
+            if (r-1 >= 0) and (c-1 >= 0) and (board[r-1][c-1] is not None) and (board[r-1][c-1].color != self.color):
+                res.append((r-1, c-1))
+            if (r-1 >= 0) and (c+1 < COLS) and (board[r-1][c+1] is not None) and (board[r-1][c+1].color != self.color):
+                res.append((r-1, c+1))
+        return res
+
+    def get_type(self):
+        return "Pawn"
 
 class Game:
     pass
 
+
 class State:
-    pass
+    
+    def __init__(self, pieces):
+        board = [[None for _ in range(5)] for _ in range(5)]
+        for piece in pieces:
+            r, c = piece.position
+            board[r][c] = piece
+        self.board = board
+    
+    def __str__(self):
+        res = ""
+        for row in self.board:
+            for piece in row:
+                if piece is None:
+                    res += "None "
+                else:
+                    res += str(piece) + " "
+            res += "\n"
+        return res
+
 
 #Implement your minimax with alpha-beta pruning algorithm here.
 def ab():
     pass
 
 
+def from_chess_coord( ch_coord):
+    return (int(ch_coord[1]), ord(ch_coord[0]) - 97)
+
+def to_chess_coord(position):
+    (r, c) = position
+    return (chr(c+97), r)
 
 ### DO NOT EDIT/REMOVE THE FUNCTION HEADER BELOW###
 # Chess Pieces: King, Queen, Knight, Bishop, Rook (First letter capitalized)
@@ -55,7 +238,26 @@ def ab():
 
 def studentAgent(gameboard):
     # You can code in here but you cannot remove this function, change its parameter or change the return type
-    config = sys.argv[1] #OPTIONAL (Since you can hardcode the board): Takes in config.txt
+
+    pieces = list()
+
+    for piece in gameboard:
+        if gameboard[piece][0] == 'King':
+            pieces.append(King(from_chess_coord(piece), gameboard[piece][1]))
+        elif gameboard[piece][0] == 'Queen':
+            pieces.append(Queen(from_chess_coord(piece), gameboard[piece][1]))
+        elif gameboard[piece][0] == 'Knight':
+            pieces.append(Knight(from_chess_coord(piece), gameboard[piece][1]))
+        elif gameboard[piece][0] == 'Bishop':
+            pieces.append(Bishop(from_chess_coord(piece), gameboard[piece][1]))
+        elif gameboard[piece][0] == 'Rook':
+            pieces.append(Rook(from_chess_coord(piece), gameboard[piece][1]))
+        else:
+            pieces.append(Pawn(from_chess_coord(piece), gameboard[piece][1]))
+
+    state = State(pieces)
+    print(state)
+
 
     move = (None, None)
     return move #Format to be returned (('a', 0), ('b', 3))
