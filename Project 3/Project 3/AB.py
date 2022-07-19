@@ -1,4 +1,3 @@
-from copy import copy
 import sys
 
 WHITE = 1
@@ -28,7 +27,9 @@ class Piece:
         pass
 
     def __str__(self):
-        return self.get_type()[:2] + "-" + str(self.color)
+        if self.color == WHITE:
+            return self.get_type()[:2] + "-W"
+        return self.get_type()[:2] + "-B"
 
 
 class King(Piece):
@@ -203,12 +204,11 @@ class State:
 
     def result(self, action): # action is a tuple (old_position, new_position)
         board = [row[:] for row in self.board]
-        res = State(board, self.turn)
+        res = State(board, -self.turn)
         res.board[action[0][0]][action[0][1]] = None
         piece = self.board[action[0][0]][action[0][1]]
         piece.position = action[1]
         res.board[action[1][0]][action[1][1]] = piece
-        self.turn = -self.turn
         return res
     
     def utility(self):
@@ -231,14 +231,20 @@ class State:
         return max_util
 
     def is_terminal(self):
-        return False
+        count_kings = 0
+        for r in range(ROWS):
+            for c in range(COLS):
+                if self.board[r][c] is not None:
+                    if self.board[r][c].get_type() == "King":
+                        count_kings += 1
+        return count_kings != 2
     
     def __str__(self):
         res = ""
         for row in self.board:
             for piece in row:
                 if piece is None:
-                    res += "None "
+                    res += " --  "
                 else:
                     res += str(piece) + " "
             res += "\n"
@@ -247,33 +253,32 @@ class State:
 
 #Implement your minimax with alpha-beta pruning algorithm here.
 def ab(state, depth, alpha, beta, is_max_player):
-    print(state)
     if depth == 0 or state.is_terminal():
         return state.utility(), None
     move = None
     if is_max_player:
-        print("WHITE'S TURN")
+        # print("WHITE'S TURN")
         value = -float('inf')
         actions = state.actions()
         for action in actions:
             v, a = ab(state.result(action), depth-1, alpha, beta, False)
             if v > value:
-                value, move = v, a
+                value, move = v, action
                 alpha = max(alpha, value)
             if value >= beta:
-                return value, move
+                break
         return value, move
     else:
-        print("BLACK'S TURN")
+        # print("BLACK'S TURN")
         value = float('inf')
         actions = state.actions()
         for action in actions:
             v, a = ab(state.result(action), depth-1, alpha, beta, True)
             if v < value:
-                value, move = v, a
+                value, move = v, action
                 beta = min(beta, value)
             if value <= alpha:
-                return value, move
+                break
         return value, move
 
 
@@ -325,10 +330,6 @@ def studentAgent(gameboard):
 
     state = State(board)
 
-    print(state)
-    print(state.actions())
-
-    # move = (None, None)
-    u, move = ab(state, 5, -float('inf'), float('inf'), True)
-    print(u)
-    return move #Format to be returned (('a', 0), ('b', 3))
+    _, move = ab(state, 4, -float('inf'), float('inf'), True)
+    start, end = move
+    return to_chess_coord(start), to_chess_coord(end)
